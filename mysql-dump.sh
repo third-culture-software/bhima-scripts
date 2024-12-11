@@ -15,7 +15,7 @@ DATABASE="$1"
 BACKUP_DIRECTORY="${2:-$HOME/backups}"
 LOG_FILE="${3:-$HOME/mysqldump.backup.log}"
 MAX_BACKUPS="${4:-14}"       # Keep two weeks of backups by default
-COMPRESSION_LEVEL="${5:-22}" # Default compression level
+COMPRESSION_LEVEL="${5:-15}" # Default compression level 15
 
 # Validate parameters
 if [ -z "$DATABASE" ]; then
