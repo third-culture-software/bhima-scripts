@@ -50,25 +50,25 @@ perform_restore() {
 
   local BACKUP_FILE=""
 
-  # Check if argument is a number (selection from list)
-  if [[ "$1" =~ ^[0-9]+$ ]]; then
-    BACKUP_FILE=$(find "$BACKUP_DIRECTORY" -name "*$DATABASE*.sql.zst" | sort -r | sed -n "${1}p")
-  else
-    # Assume full path or filename was provided
-    BACKUP_FILE="$1"
-  fi
+  # try to find the backup fiel.
+  BACKUP_FILE=$(find "$BACKUP_DIRECTORY" -name "*$DATABASE*.sql.zst" -printf '%T@ %p\n' | sort -nr | awk '{print $2}' | head -n 1)
 
   # Validate backup file exists
   if [ ! -f "$BACKUP_FILE" ]; then
     error_exit "Backup file not found: $BACKUP_FILE"
+  else
+    log "Using $BACKUP_FILE to restore $DATABASE."
   fi
 
   # Create temporary uncompressed SQL file
   local TEMP_SQL_FILE=$(mktemp)
 
+  # try to remove this file
+  rm "$TEMP_SQL_FILE"
+
   # Decompress the backup
   log "Decompressing backup: $BACKUP_FILE"
-  zstd -d "$BACKUP_FILE" -o "$TEMP_SQL_FILE" || error_exit "Decompression failed"
+  zstd --quiet --force --keep --decompress "$BACKUP_FILE" -o "$TEMP_SQL_FILE" || error_exit "Decompression failed"
 
   # Drop existing database
   log "Dropping existing database: $DATABASE"
