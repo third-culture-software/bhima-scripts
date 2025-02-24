@@ -50,7 +50,6 @@ perform_backup() {
   mysqldump \
     --add-drop-database \
     --add-drop-table \
-    --column-statistics=0 \
     --complete-insert \
     --disable-keys \
     --events \
@@ -59,7 +58,6 @@ perform_backup() {
     --no-tablespaces \
     --quick \
     --routines \
-    --set-gtid-purged=OFF \
     --single-transaction \
     --skip-lock-tables \
     --triggers \

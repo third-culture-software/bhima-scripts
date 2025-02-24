@@ -78,9 +78,16 @@ perform_restore() {
   log "Creating new database: $DATABASE"
   mysql -e "CREATE DATABASE $DATABASE"
 
+  log "Disabling keys for database: $DATABASE"
+  mysql -e "SET foreign_key_checks = 0; SET unique_checks = 0;" || error_exit "Failed to disable keys"
+
   # Restore database
   log "Restoring database from backup"
   mysql "$DATABASE" <"$TEMP_SQL_FILE" || error_exit "Database restoration failed"
+
+  # Enable keys
+  log "Enabling keys for database: $DATABASE"
+  mysql -e "SET foreign_key_checks = 1; SET unique_checks = 1;" || error_exit "Failed to enable keys"
 
   # Remove temporary file
   rm "$TEMP_SQL_FILE"
