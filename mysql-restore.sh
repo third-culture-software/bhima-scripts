@@ -48,6 +48,8 @@ perform_restore() {
     return 1
   fi
 
+  local start_time=$(date +%s)
+
   local BACKUP_FILE=""
 
   # try to find the backup fiel.
@@ -63,8 +65,8 @@ perform_restore() {
   # Create temporary uncompressed SQL file
   local TEMP_SQL_FILE=$(mktemp)
 
-  # try to remove this file
-  rm "$TEMP_SQL_FILE"
+  # Make sure temp file is removed on exit, even if the script fails
+  trap 'rm -f "$TEMP_SQL_FILE"' EXIT
 
   # Decompress the backup
   log "Decompressing backup: $BACKUP_FILE"
@@ -83,6 +85,7 @@ perform_restore() {
 
   # Restore database
   log "Restoring database from backup"
+  sed -i 's/DEFINER=`bhima`@`localhost`//g' "$TEMP_SQL_FILE"
   mysql "$DATABASE" <"$TEMP_SQL_FILE" || error_exit "Database restoration failed"
 
   # Enable keys
@@ -91,8 +94,34 @@ perform_restore() {
 
   # Remove temporary file
   rm "$TEMP_SQL_FILE"
+  
+  # end time
+  local end_time=$(date +%s)
 
-  log "Database restore completed successfully"
+  # duration in seconds
+  local duration=$((end_time - start_time))
+
+  # Calculate minutes and seconds
+  local minutes=$((duration / 60))
+  local seconds=$((duration % 60))
+
+  # Get database statistics to help inform how fresh the data is.
+  MAX_CASH_DATE=$(mysql -D "$DATABASE" -N -e "SELECT MAX(date) FROM cash;")
+  MAX_INVOICE_DATE=$(mysql -D "$DATABASE" -N -e "SELECT MAX(date) FROM invoice;")
+  MAX_VOUCHER_DATE=$(mysql -D "$DATABASE" -N -e "SELECT MAX(date) FROM voucher;")
+  
+  # Update the dashboard to denote when the database was last build
+  SIZE=$(mysql -sN -e "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) FROM information_schema.tables WHERE table_schema = '$DATABASE';")
+  MSG="Database last built at $(date +"%Y-%m-%d %H:%M:%S %Z").
+    It is currently $SIZE MB in size.
+    Lastest Invoice: $MAX_INVOICE_DATE.
+    Lastest Cash Payment: $MAX_CASH_DATE.
+    Lastest Voucher: $MAX_VOUCHER_DATE.
+    The database build process took ${minutes}m${seconds}s."
+
+  mysql $DATABASE -e "UPDATE enterprise SET helpdesk='$MSG';"
+
+  log "Database restore completed successfully in ${minutes}m${seconds}s"
 }
 
 # Interactive restore selection
