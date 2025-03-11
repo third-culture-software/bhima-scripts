@@ -85,7 +85,7 @@ perform_restore() {
 
   # Restore database
   log "Restoring database from backup"
-  sed -i 's/DEFINER=`bhima`@`localhost`//g' "$TEMP_SQL_FILE"
+  sed -i 's/DEFINER=`[^`]*`@`[^`]*`//g' "$TEMP_SQL_FILE"
   mysql "$DATABASE" <"$TEMP_SQL_FILE" || error_exit "Database restoration failed"
 
   # Enable keys
