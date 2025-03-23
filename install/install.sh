@@ -34,37 +34,56 @@ function install_dependencies() {
   sudo apt-get update && sudo apt-get upgrade -y
   sudo apt-get install -y wget lsb-release ca-certificates curl gnupg software-properties-common apt-transport-https tar screen
 
-  printf '\342\234\224 dependencies updated!\n'
+  echo "✓ dependencies updated"
 
   # Get the LTS NodeJS from NodeSource
   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -
   sudo apt-get install -y nodejs
 
   # Install the redis.io APT repository
+  rm /usr/share/keyrings/redis-archive-keyring.gpg
   curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
   sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
   echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
   sudo apt-get update
   sudo apt-get install -y redis
 
-  printf '\342\234\224 installed redis!\n'
+  echo "✓ redis installed."
 }
 
 # Function to install and configure MySQL
 function install_mysql() {
-  wget -c https://dev.mysql.com/get/mysql-apt-config_0.8.33-1_all.deb
+  local os_name=$(lsb_release -si)
+  local os_codename=$(lsb_release -cs)
 
-  sudo debconf-set-selections <<<"mysql-apt-config mysql-apt-config/select-server select mysql-8.4"
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ./mysql-apt-config_0.8.24-1_all.deb
+  case "$os_name" in
+  "Ubuntu")
+    os_dir="ubuntu"
+    ;;
+  "Debian")
+    os_dir="debian"
+    ;;
+  *)
+    echo "Unsupported operating system: $os_name"
+    exit 1
+    ;;
+  esac
 
+  echo "Detected $os_dir $os_codename."
+
+  # grap the MySQL GPG key
+  # https://dev.mysql.com/doc/mysql-apt-repo-quick-guide/en/#repo-qg-apt-replace-direct
+  sudo gpg --keyserver keyserver.ubuntu.com --recv-keys A8D3785C
+
+  echo "Configuring mysql apt repository"
+  echo "deb http://repo.mysql.com/apt/${os_dir}/ ${os_codename} mysql-8.4-lts" >/etc/apt/sources.list.d/mysql.list
+
+  echo "✓ mysql repository configured."
   sudo apt-get update -y
-
-  sudo debconf-set-selections <<<"mysql-server mysql-server/root_password password $MYSQL_PASSWORD"
-  sudo debconf-set-selections <<<"mysql-server mysql-server/root_password_again password $MYSQL_PASSWORD"
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server
+  sudo apt-get install -y mysql-server
 
   # create the ~/my.cnf file with the mysql credentials
-  cat <<EOF >"$HOME/.my.cnf"
+  cat <<EOF >"/root/.my.cnf"
 [mysql]
 user=root
 password=$MYSQL_PASSWORD
@@ -75,12 +94,16 @@ user=root
 password=$MYSQL_PASSWORD
 host=127.0.0.1
 EOF
+
+  echo "✓ mysql server installed."
 }
 
 # Function to install and configure NGINX
 install_nginx() {
   sudo apt-get install nginx -y
   mkdir -p /etc/nginx/includes/
+
+  echo "✓ nginx installed."
 
   wget -O /etc/nginx/includes/gzip.conf \
     https://raw.githubusercontent.com/Third-Culture-Software/bhima-scripts/refs/heads/main/install/nginx/gzip.conf
@@ -103,19 +126,21 @@ install_nginx() {
     ln -s /etc/nginx/sites-available/bhima /etc/nginx/sites-enabled/bhima
   fi
 
+  echo "✓ nginx configured."
   sudo systemctl enable nginx
   sudo systemctl start nginx
-
-  echo "NGINX installed and configured successfully."
-
 }
 
 # Function to install and configure syncthing (optional)
 install_syncthing() {
+  echo "Installing Syncthing..."
+
   sudo mkdir -p /etc/apt/keyrings
   sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
   echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | sudo tee /etc/apt/sources.list.d/syncthing.list
   sudo apt-get update && sudo apt-get install -y syncthing
+
+  echo "✓ syncthing installed."
 
   systemctl --user enable syncthing.service
   systemctl --user start syncthing.service
@@ -124,10 +149,13 @@ install_syncthing() {
   sleep 3
 
   sed -i 's/127.0.0.1/0.0.0.0/g' "$HOME/.config/syncthing/config.xml"
+
+  echo "✓ syncthing configured."
 }
 
 # Function to install and configure BHIMA
 install_bhima() {
+  echo "Installing BHIMA..."
   local REPO="Third-Culture-Software/bhima"
 
   mkdir -p "$BHIMA_INSTALL_DIR"
@@ -147,33 +175,47 @@ install_bhima() {
   echo "Extracting release..."
   tar -xzf "$BHIMA_INSTALL_DIR/bhima-latest.tar.gz" -C "$BHIMA_INSTALL_DIR"
   rm "$BHIMA_INSTALL_DIR/bhima-latest.tar.gz"
-  echo "Download and extraction complete!"
+  echo "✓ download and extraction complete."
 
   cd "$BHIMA_INSTALL_DIR/"
 
   cp ./bin/* .
 
-  sed -i "s/DB_NAME/$BHIMA_INSTALL_DIR/g" .env
   sed -i '/DB_NAME/d' .env
-  sed -i '/SESS_SECRET/d' .env
   sed -i '/DB_PASS/d' .env
+  sed -i '/DB_USER/d' .env
   sed -i '/PORT/d' .env
+  sed -i '/SESS_SECRET/d' .env
 
-  echo "DB_NAME=bhima" >>.env
-  echo "PORT=$BHIMA_PORT" >>.env
-  echo "DB_PASS=$MYSQL_PASSWORD" >>.env
-  echo "SESS_SECRET=$(openssl rand -hex 64)" >>.env
+  {
+    echo "DB_NAME=bhima" &
+    echo "DB_PASS=$MYSQL_PASSWORD" &
+    echo "DB_USER=root" &
 
-  npm ci
+    echo "NODE_ENV=production" &
 
+    echo "PORT=$BHIMA_PORT" &
+    echo "SESS_SECRET=$(openssl rand -hex 64)" &
+  } >>.env
+
+  echo "✓ updated .env file."
+
+  NODE_ENV=production npm ci
+
+  echo "✓ installing npm dependencies."
+
+  echo "Setting bhima to automatically startup..."
   wget -O /etc/systemd/system/bhima.service \
     https://raw.githubusercontent.com/Third-Culture-Software/bhima-scripts/refs/heads/main/install/systemd/bhima.service
 
   sed -i "s/BHIMA_INSTALL_DIR/$BHIMA_INSTALL_DIR/g" /etc/systemd/system/bhima.service
 
+  # now we need to set up the BHIMA database
   systemctl daemon-reload
   systemctl start bhima
   systemctl enable bhima
+
+  echo "✓ BHIMA installed and configured."
 }
 
 # Function to install and configure Tailscale
@@ -249,9 +291,9 @@ function perform_final_checks() {
 install_dependencies
 install_mysql
 install_nginx
-install_syncthing
 install_bhima
-install_tailscale
+#install_syncthing
+#install_tailscale
 harden_server
 perform_final_checks
 
