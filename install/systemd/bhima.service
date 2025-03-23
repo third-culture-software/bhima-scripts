@@ -1,0 +1,20 @@
+[Unit]
+Description=The bhima server
+Documentation=https://docs.bhi.ma
+After=network.target
+
+[Service]
+Environment=NODE_ENV=production DB_NAME=bhima
+Type=simple
+User=bhima
+
+# adjust this accordingly
+WorkingDirectory=BHIMA_INSTALL_DIR/bin
+
+# adjust this accordingly
+ExecStart=/usr/bin/node server/app.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
