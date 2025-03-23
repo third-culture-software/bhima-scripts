@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # The BHIMA installation script.
+set -e # Exit immediately if a command exits with a non-zero status
 
 # Global Variables
 BHIMA_INSTALL_DIR="/opt/bhima"
@@ -8,7 +9,7 @@ BHIMA_VERSION="1.35.0"
 BHIMA_HOST=""   # e.g. vanga.thirdculturesoftware.com
 BHIMA_PORT=8080 # e.g.8080
 
-MYSQL_ROOT_PASSWORD="$(openssl rand -hex 64)"
+MYSQL_PASSWORD="$(openssl rand -hex 16)"
 
 TS_AUTH_KEY=""
 
@@ -18,9 +19,12 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-echo "Welcome! This script will help install the BHIMA software."
+# Print welcome message
+echo "Welcome! This script will help install the BHIMA software version $BHIMA_VERSION."
+echo "=============================================================================="
 
-cat header.txt
+# show the banner image
+curl https://raw.githubusercontent.com/Third-Culture-Software/bhima-scripts/refs/heads/main/install/header.txt
 
 # Function to install dependencies
 function install_dependencies() {
@@ -89,8 +93,21 @@ install_nginx() {
 
   ln -s /etc/nginx/sites-available/bhima /etc/nginx/sites-enabled/bhima
 
+  # Remove default site if it exists
+  if [ -f /etc/nginx/sites-enabled/default ]; then
+    rm /etc/nginx/sites-enabled/default
+  fi
+
+  # Create symlink if it doesn't exist already
+  if [ ! -f /etc/nginx/sites-enabled/bhima ]; then
+    ln -s /etc/nginx/sites-available/bhima /etc/nginx/sites-enabled/bhima
+  fi
+
   sudo systemctl enable nginx
   sudo systemctl start nginx
+
+  echo "NGINX installed and configured successfully."
+
 }
 
 # Function to install and configure syncthing (optional)
@@ -100,10 +117,13 @@ install_syncthing() {
   echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | sudo tee /etc/apt/sources.list.d/syncthing.list
   sudo apt-get update && sudo apt-get install -y syncthing
 
-  sed -i 's/127.0.0.1/0.0.0.0/g' "$HOME/.config/syncthing/config.xml"
-
   systemctl --user enable syncthing.service
   systemctl --user start syncthing.service
+
+  # wait for syncthing to generate config files
+  sleep 3
+
+  sed -i 's/127.0.0.1/0.0.0.0/g' "$HOME/.config/syncthing/config.xml"
 }
 
 # Function to install and configure BHIMA
@@ -112,9 +132,9 @@ install_bhima() {
 
   mkdir -p "$BHIMA_INSTALL_DIR"
 
+  echo "Fetching the latest release information..."
   local LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
-
-  DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o 'https://.*\.tar\.gz')
+  local DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o 'https://.*\.tar\.gz')
 
   if [ -z "$DOWNLOAD_URL" ]; then
     echo "Error: Could not find a .tar.gz release asset"
@@ -134,14 +154,14 @@ install_bhima() {
   cp ./bin/* .
 
   sed -i "s/DB_NAME/$BHIMA_INSTALL_DIR/g" .env
-  sed '/DB_NAME/d' .env
-  sed '/SESS_SECRET/d' .env
-  sed '/DB_PASS/d' .env
-  sed '/PORT/d' .env
+  sed -i '/DB_NAME/d' .env
+  sed -i '/SESS_SECRET/d' .env
+  sed -i '/DB_PASS/d' .env
+  sed -i '/PORT/d' .env
 
   echo "DB_NAME=bhima" >>.env
   echo "PORT=$BHIMA_PORT" >>.env
-  echo "DB_PASS=$MYSQL_ROOT_PASSWORD" >>.env
+  echo "DB_PASS=$MYSQL_PASSWORD" >>.env
   echo "SESS_SECRET=$(openssl rand -hex 64)" >>.env
 
   npm ci
@@ -171,7 +191,58 @@ install_tailscale() {
 
 # Function to harden the server against attacks
 harden_server() {
+  echo "Hardening server security..."
+
   sudo apt-get install -y unattended-upgrade fail2ban
+
+  # Configure unattended-upgrades
+  cat >/etc/apt/apt.conf.d/20auto-upgrades <<EOF
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+EOF
+}
+
+# Function to perform final checks
+function perform_final_checks() {
+  echo "Performing final checks..."
+
+  # Check if BHIMA service is running
+  if systemctl is-active --quiet bhima; then
+    echo "✓ BHIMA service is running"
+  else
+    echo "✗ BHIMA service is not running"
+    systemctl status bhima --no-pager
+  fi
+
+  # Check if NGINX is running
+  if systemctl is-active --quiet nginx; then
+    echo "✓ NGINX service is running"
+  else
+    echo "✗ NGINX service is not running"
+    systemctl status nginx --no-pager
+  fi
+
+  # Check if MySQL is running
+  if systemctl is-active --quiet mysql; then
+    echo "✓ MySQL service is running"
+  else
+    echo "✗ MySQL service is not running"
+    systemctl status mysql --no-pager
+  fi
+
+  # Print installation summary
+  echo ""
+  echo "Installation Summary:"
+  echo "====================="
+  echo "BHIMA installed at: $BHIMA_INSTALL_DIR"
+  echo "BHIMA hostname: $BHIMA_HOST"
+  echo "BHIMA port: $BHIMA_PORT"
+  echo "MySQL password: $MYSQL_PASSWORD (saved in /root/.my.cnf)"
+  echo ""
+  echo "Access your BHIMA installation at: http://$BHIMA_HOST"
+  echo ""
+  echo "Important: Please write down the MySQL password and keep it in a secure location."
 }
 
 # Execute the functions
@@ -182,5 +253,6 @@ install_syncthing
 install_bhima
 install_tailscale
 harden_server
+perform_final_checks
 
 echo "BHIMA installation complete!"
