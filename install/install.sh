@@ -165,14 +165,18 @@ install_syncthing() {
 
 # Function to install and configure BHIMA
 install_bhima() {
-  echo "Installing BHIMA..."
   local REPO="Third-Culture-Software/bhima"
+  local LATEST_RELEASE
+  local DOWNLOAD_URL
+
+  echo "Installing BHIMA..."
 
   mkdir -p "$BHIMA_INSTALL_DIR"
 
   echo "Fetching the latest release information..."
-  local LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
-  local DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o 'https://.*\.tar\.gz')
+
+  LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
+  DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o 'https://.*\.tar\.gz')
 
   if [ -z "$DOWNLOAD_URL" ]; then
     echo "Error: Could not find a .tar.gz release asset"
@@ -187,9 +191,18 @@ install_bhima() {
   rm "$BHIMA_INSTALL_DIR/bhima-latest.tar.gz"
   echo "✓ download and extraction complete."
 
-  cd "$BHIMA_INSTALL_DIR/"
 
-  cp ./bin/* .
+  local RELEASE_DIR
+  RELEASE_DIR="$BHIMA_INSTALL_DIR/bhima-$BHIMA_VERSION"
+  echo "BHIMA installed to $RELEASE_DIR."
+
+  # make a symbolic link to the bin directory
+  ln -s "$RELEASE_DIR" "$BHIMA_INSTALL_DIR/bhima"
+
+  # jump into installed directory
+  cd "$BHIMA_INSTALL_DIR/bhima"
+
+  cp /bin/* .
 
   sed -i '/DB_NAME/d' .env
   sed -i '/DB_PASS/d' .env
@@ -197,6 +210,7 @@ install_bhima() {
   sed -i '/PORT/d' .env
   sed -i '/SESS_SECRET/d' .env
 
+  # write to .env file
   {
     echo "DB_NAME=bhima" &
     echo "DB_PASS=$MYSQL_PASSWORD" &
