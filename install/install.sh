@@ -34,9 +34,11 @@ function install_dependencies() {
   echo "✓ dependencies updated"
 
   # show the banner image
-  echo "Welcome!  You are now installing"
+  echo ""
+  echo "Welcome!  You are now installing..."
   curl https://raw.githubusercontent.com/Third-Culture-Software/bhima-scripts/refs/heads/main/install/header.txt
   echo "BHIMA is free and open source software (FOSS) licensed under GPLv2.  By continuing you agree to the terms of the license."
+  echo ""
 
   # Get the LTS NodeJS from NodeSource
   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -
@@ -59,7 +61,7 @@ function install_dependencies() {
 # Function to install and configure MySQL
 function install_mysql() {
   local RELEASE_REPO="mysql-8.4-lts"
-  local RELEASE_AUTH="mysql_native_password"
+  local RELEASE_AUTH="caching_sha2_password" # MySQL < 8.4 used native password.
 
   echo "Configuring mysql APT repository... (using $RELEASE_REPO)"
   if [ -f /usr/share/keyrings/mysql.gpg ]; then
