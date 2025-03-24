@@ -9,7 +9,7 @@ BHIMA_VERSION="1.35.0"
 BHIMA_HOST=""   # e.g. vanga.thirdculturesoftware.com
 BHIMA_PORT=8080 # e.g.8080
 
-MYSQL_PASSWORD="$(openssl rand -hex 16)"
+MYSQL_PASSWORD="$(openssl rand -hex 26)"
 
 TS_AUTH_KEY=""
 
@@ -36,6 +36,9 @@ function install_dependencies() {
 
   echo "✓ dependencies updated"
 
+  # show the banner image
+  curl https://raw.githubusercontent.com/Third-Culture-Software/bhima-scripts/refs/heads/main/install/header.txt
+
   # Get the LTS NodeJS from NodeSource
   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -
   sudo apt-get install -y nodejs
@@ -53,34 +56,31 @@ function install_dependencies() {
 
 # Function to install and configure MySQL
 function install_mysql() {
-  local os_name=$(lsb_release -si)
-  local os_codename=$(lsb_release -cs)
 
-  case "$os_name" in
-  "Ubuntu")
-    os_dir="ubuntu"
-    ;;
-  "Debian")
-    os_dir="debian"
-    ;;
-  *)
-    echo "Unsupported operating system: $os_name"
-    exit 1
-    ;;
-  esac
+  local RELEASE_REPO="mysql-8.4-lts"
+  local RELEASE_AUTH="mysql_native_password"
 
-  echo "Detected $os_dir $os_codename."
-
-  # grap the MySQL GPG key
-  # https://dev.mysql.com/doc/mysql-apt-repo-quick-guide/en/#repo-qg-apt-replace-direct
-  sudo gpg --keyserver keyserver.ubuntu.com --recv-keys A8D3785C
-
-  echo "Configuring mysql apt repository"
-  echo "deb http://repo.mysql.com/apt/${os_dir}/ ${os_codename} mysql-8.4-lts" >/etc/apt/sources.list.d/mysql.list
+  echo "Configuring mysql APT repository..."
+  curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 | gpg --dearmor -o /usr/share/keyrings/mysql.gpg
+  if [ "$(lsb_release -si)" = "Debian" ]; then
+    echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] http://repo.mysql.com/apt/debian $(lsb_release -sc) ${RELEASE_REPO}" >/etc/apt/sources.list.d/mysql.list
+  else
+    echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] http://repo.mysql.com/apt/ubuntu $(lsb_release -sc) ${RELEASE_REPO}" >/etc/apt/sources.list.d/mysql.list
+  fi
 
   echo "✓ mysql repository configured."
-  sudo apt-get update -y
-  sudo apt-get install -y mysql-server
+  echo "Installing mysql server..."
+
+  sudo apt-get update
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    mysql-community-client \
+    mysql-community-server
+
+  echo "✓ mysql installed."
+
+  echo "Configuring mysql server..."
+
+  mysql -uroot -p"$MYSQL_PASSWORD" -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH $RELEASE_AUTH BY '$ADMIN_PASS'; FLUSH PRIVILEGES;"
 
   # create the ~/my.cnf file with the mysql credentials
   cat <<EOF >"/root/.my.cnf"
@@ -95,7 +95,9 @@ password=$MYSQL_PASSWORD
 host=127.0.0.1
 EOF
 
-  echo "✓ mysql server installed."
+  echo "✓ mysql server configured."
+
+  systemctl enable -q --now mysql
 }
 
 # Function to install and configure NGINX
@@ -292,8 +294,8 @@ install_dependencies
 install_mysql
 install_nginx
 install_bhima
-#install_syncthing
-#install_tailscale
+#install_syncthing # only enable on production environments
+#install_tailscale # only enable on production environments
 harden_server
 perform_final_checks
 
