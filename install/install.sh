@@ -5,7 +5,7 @@ set -e # Exit immediately if a command exits with a non-zero status
 
 # Global Variables
 BHIMA_INSTALL_DIR="/opt/bhima"
-BHIMA_VERSION="1.35.0"
+BHIMA_VERSION="1.36.0"
 BHIMA_HOST=""   # e.g. vanga.thirdculturesoftware.com
 BHIMA_PORT=8080 # e.g.8080
 
@@ -191,18 +191,18 @@ install_bhima() {
   rm "$BHIMA_INSTALL_DIR/bhima-latest.tar.gz"
   echo "✓ download and extraction complete."
 
-
   local RELEASE_DIR
   RELEASE_DIR="$BHIMA_INSTALL_DIR/bhima-$BHIMA_VERSION"
   echo "BHIMA installed to $RELEASE_DIR."
 
   # make a symbolic link to the bin directory
-  ln -s "$RELEASE_DIR" "$BHIMA_INSTALL_DIR/bhima"
+  ln -s "$RELEASE_DIR/" "$BHIMA_INSTALL_DIR/bhima"
 
   # jump into installed directory
+  mkdir -p "$BHIMA_INSTALL_DIR"
   cd "$BHIMA_INSTALL_DIR/bhima"
 
-  cp /bin/* .
+  cp ./bin/* .
 
   sed -i '/DB_NAME/d' .env
   sed -i '/DB_PASS/d' .env
@@ -219,7 +219,7 @@ install_bhima() {
     echo "NODE_ENV=production" &
 
     echo "PORT=$BHIMA_PORT" &
-    echo "SESS_SECRET=$(openssl rand -hex 64)" &
+    echo "SESS_SECRET=$(openssl rand -hex 65)" &
   } >>.env
 
   echo "✓ updated .env file."
