@@ -66,6 +66,7 @@ perform_backup() {
 
   # Remove definer statements to improve portability
   sed -i 's/DEFINER=[^*]*\*/\*/g' "$OUTFILE"
+  sed -i '/DEFINER=/s/DEFINER=`[^`]*`@`[^`]*` //g' "$OUTFILE"
 
   # Compress with zstd for better compression and speed
   zstd --quiet --ultra -"$COMPRESSION_LEVEL" "$OUTFILE" || error_exit "Compression failed"
