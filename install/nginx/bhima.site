@@ -2,7 +2,7 @@
 # This is the reverse proxy for BHIMA_HOST.
 ##
 server {
-    server_name BHIMA_HOST 
+    server_name BHIMA_HOST;
 
     upstream bhima {
         server 127.0.0.1:BHIMA_PORT;
