@@ -4,16 +4,30 @@ Documentation=https://docs.bhi.ma
 After=network.target
 
 [Service]
-Environment=NODE_ENV=production DB_NAME=bhima
+# Environment variables
+Environment=NODE_ENV=production
+Environment=DB_NAME=bhima
+
+WorkingDirectory=BHIMA_INSTALL_DIR/bin
+
+ExecStart=/usr/bin/node server/app.js
+
 Type=simple
 User=bhima
 
-# adjust this accordingly
-WorkingDirectory=BHIMA_INSTALL_DIR/bin
-
-# adjust this accordingly
-ExecStart=/usr/bin/node server/app.js
 Restart=on-failure
+RestartSec=3
+
+# security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Logging
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
