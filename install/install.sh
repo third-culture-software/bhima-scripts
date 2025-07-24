@@ -60,36 +60,39 @@ function install_dependencies() {
 
 # Function to install and configure MySQL
 function install_mysql() {
-  local RELEASE_REPO="mysql-8.4-lts"
-  local RELEASE_AUTH="caching_sha2_password" # MySQL < 8.4 used native password.
+  local RELEASE_REPO="mysql-8.4"
+  # local RELEASE_AUTH="caching_sha2_password" 
 
   echo "Configuring mysql APT repository... (using $RELEASE_REPO)"
   if [ -f /usr/share/keyrings/mysql.gpg ]; then
     rm /usr/share/keyrings/mysql.gpg
   fi
 
-  curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 | gpg --dearmor -o /usr/share/keyrings/mysql.gpg
-
-  if [ "$(lsb_release -si)" = "Debian" ]; then
-    echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] http://repo.mysql.com/apt/debian $(lsb_release -sc) ${RELEASE_REPO}" >/etc/apt/sources.list.d/mysql.list
-  else
-    echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] http://repo.mysql.com/apt/ubuntu $(lsb_release -sc) ${RELEASE_REPO}" >/etc/apt/sources.list.d/mysql.list
-  fi
+  # Add MySQL APT repository (non-interactive)
+  wget https://dev.mysql.com/get/mysql-apt-config_0.8.34-1_all.deb
+  sudo DEBIAN_FRONTEND=noninteractive \
+    dpkg -i mysql-apt-config_0.8.34-1_all.deb <<EOF
+1
+EOF
 
   echo "✓ mysql repository configured."
-  echo "Installing mysql server..."
 
-  sudo apt-get update
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    mysql-community-client \
-    mysql-community-server
+  # Update package info
+  apt update
+
+  # Preseed MySQL root password and install MySQL Server non-interactively
+  debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password $MYSQL_PASSWORD"
+  debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password $MYSQL_PASSWORD"
+  debconf-set-selections <<< "mysql-apt-config mysql-apt-config/select-server select $RELEASE_REPO" 
+  DEBIAN_FRONTEND=noninteractive apt install -y mysql-server
 
   echo "✓ mysql installed."
-
   echo "Configuring mysql server..."
-
-  mysql -uroot -p"$MYSQL_PASSWORD" -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH $RELEASE_AUTH BY '$ADMIN_PASS'; FLUSH PRIVILEGES;"
-
+  
+  # Start and enable MySQL
+  systemctl enable mysql
+  systemctl start mysql
+  
   # create the ~/my.cnf file with the mysql credentials
   cat <<EOF >"/root/.my.cnf"
 [mysql]
@@ -104,6 +107,9 @@ host=127.0.0.1
 EOF
 
   echo "✓ mysql server configured."
+
+  # clean up previous mysql files
+  rm mysql-apt-config_0.8.34-1_all.deb
 
   systemctl enable -q --now mysql
 }
