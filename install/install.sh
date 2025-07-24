@@ -28,8 +28,8 @@ function install_dependencies() {
   echo "Updating BHIMA OS dependencies..."
 
   # Refresh the package lists, and download the OS libraries
-  sudo apt-get update && sudo apt-get upgrade -y
-  sudo apt-get install -y wget lsb-release ca-certificates curl gnupg software-properties-common apt-transport-https tar screen
+  sudo apt-get -qq update && sudo apt-get -qq upgrade -y
+  sudo apt-get -qq install -y wget lsb-release ca-certificates curl gnupg software-properties-common apt-transport-https tar screen
 
   echo "✓ dependencies updated"
 
@@ -41,8 +41,12 @@ function install_dependencies() {
   echo ""
 
   # Get the LTS NodeJS from NodeSource
+  echo "Installing NodeJS LTS..."
   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -
-  sudo apt-get install -y nodejs
+  sudo apt-get -qq install -y nodejs
+  echo "✓ NodeJS installed."
+  
+  echo "Installing redis ..."
 
   # Install the redis.io APT repository
   if [ -f /usr/share/keyrings/redis-archive-keyring.gpg ]; then
@@ -52,8 +56,8 @@ function install_dependencies() {
   curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
   sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
   echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
-  sudo apt-get update
-  sudo apt-get install -y redis
+  sudo apt-get -qq update
+  sudo apt-get -qq install -y redis
 
   echo "✓ redis installed."
 }
@@ -78,13 +82,13 @@ EOF
   echo "✓ mysql repository configured."
 
   # Update package info
-  apt update
+  apt-get -qq update
 
   # Preseed MySQL root password and install MySQL Server non-interactively
   debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password $MYSQL_PASSWORD"
   debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password $MYSQL_PASSWORD"
   debconf-set-selections <<< "mysql-apt-config mysql-apt-config/select-server select $RELEASE_REPO" 
-  DEBIAN_FRONTEND=noninteractive apt install -y mysql-server
+  DEBIAN_FRONTEND=noninteractive apt-get -qq install -y mysql-community-server
 
   echo "✓ mysql installed."
   echo "Configuring mysql server..."
@@ -154,7 +158,7 @@ install_syncthing() {
   sudo mkdir -p /etc/apt/keyrings
   sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
   echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | sudo tee /etc/apt/sources.list.d/syncthing.list
-  sudo apt-get update && sudo apt-get install -y syncthing
+  sudo apt-get -qq update && sudo apt-get -qq  install -y syncthing
 
   echo "✓ syncthing installed."
 
