@@ -168,7 +168,7 @@ install_syncthing() {
   # wait for syncthing to generate config files
   sleep 3
 
-  sed -i 's/127.0.0.1/0.0.0.0/g' "$HOME/.config/syncthing/config.xml"
+  sed -i 's/127.0.0.1/0.0.0.0/g' "$HOME/.local/state/syncthing/config.xml"
 
   echo "✓ syncthing configured."
 }
