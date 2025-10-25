@@ -118,7 +118,7 @@ EOF
   echo "✓ mysql server configured."
 
   # clean up previous mysql files
-  rm mysql-apt-config_0.8.36-1_all.deb
+  rm mysql-apt-config_0.8.35-1_all.deb
 
   systemctl enable -q --now mysql
 }
