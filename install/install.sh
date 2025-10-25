@@ -182,6 +182,7 @@ install_bhima() {
   local REPO="Third-Culture-Software/bhima"
   local LATEST_RELEASE
   local DOWNLOAD_URL
+  local BHIMA_VERSION
 
   echo "Installing BHIMA..."
 
@@ -197,6 +198,14 @@ install_bhima() {
     exit 1
   fi
 
+  # Extract tag_name (strip leading "v" if present) and write it into BHIMA_VERSION
+  parsed_tag=$(echo "$LATEST_RELEASE" | sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p')
+  if [[ -n "$parsed_tag" ]]; then
+    # remove a leading "v" if present (tags often use v1.2.3)
+    BHIMA_VERSION="${parsed_tag#v}"
+    echo "Detected release tag: $parsed_tag -> using BHIMA_VERSION=$BHIMA_VERSION"
+  fi
+
   echo "Downloading latest release..."
   wget -O "$BHIMA_INSTALL_DIR/bhima-latest.tar.gz" "$DOWNLOAD_URL"
 
@@ -206,8 +215,8 @@ install_bhima() {
   echo "✓ download and extraction complete."
 
   local RELEASE_DIR
-  RELEASE_DIR="$BHIMA_INSTALL_DIR/bhima-$LATEST_RELEASE"
-  echo "BHIMA version $LATEST_RELEASE installed to $RELEASE_DIR."
+  RELEASE_DIR="$BHIMA_INSTALL_DIR/bhima-$BHIMA_VERSION"
+  echo "BHIMA version $BHIMA_VERSION installed to $RELEASE_DIR."
 
   # make a symbolic link to the bin directory
   ln -s "$RELEASE_DIR/" "$BHIMA_INSTALL_DIR/bhima"
