@@ -5,7 +5,7 @@ set -e # Exit immediately if a command exits with a non-zero status
 
 # Global Variables
 BHIMA_INSTALL_DIR="/opt/bhima"
-BHIMA_HOST=""   # e.g. vanga.thirdculturesoftware.com
+BHIMA_HOST="bhima"   # e.g. vanga.thirdculturesoftware.com
 BHIMA_PORT=8080 # e.g.8080
 
 MYSQL_PASSWORD="$(openssl rand -hex 26)"
@@ -252,11 +252,13 @@ install_bhima() {
     echo "DB_NAME=bhima" &
     echo "DB_PASS=$MYSQL_PASSWORD" &
     echo "DB_USER=root" &
+    echo "DB_HOST=127.0.0.1" &
+    echo "REDIS_HOST=127.0.0.1" &
 
     echo "NODE_ENV=production" &
-
     echo "PORT=$BHIMA_PORT" &
-    echo "SESS_SECRET=$(openssl rand -hex 65)" &
+    echo "SESS_SECRET=$(openssl rand -hex 25)" &
+
     echo "" &
   } >>.env
 
