@@ -218,7 +218,21 @@ install_bhima() {
   RELEASE_DIR="$BHIMA_INSTALL_DIR/bhima-$BHIMA_VERSION"
   echo "BHIMA version $BHIMA_VERSION installed to $RELEASE_DIR."
 
+  # Ensure 'bhima' system user exists to avoid running app as root
+  if ! id -u bhima >/dev/null 2>&1; then
+    echo "Creating system user 'bhima'..."
+    # create system user with home at the install symlink (will be created below)
+    useradd --system --create-home --home-dir "$BHIMA_INSTALL_DIR/bhima" --shell /usr/sbin/nologin bhima
+    echo "✓ user 'bhima' created."
+  else
+    echo "User 'bhima' already exists."
+  fi
+
   # make a symbolic link to the bin directory
+  # remove existing symlink if it's a broken symlink or an existing symlink (to avoid ln -s failure)
+  if [ -L "$BHIMA_INSTALL_DIR/bhima" ] || [ -e "$BHIMA_INSTALL_DIR/bhima" ]; then
+    rm -rf "$BHIMA_INSTALL_DIR/bhima"
+  fi
   ln -s "$RELEASE_DIR/" "$BHIMA_INSTALL_DIR/bhima"
 
   # jump into installed directory
@@ -247,8 +261,18 @@ install_bhima() {
 
   echo "✓ updated .env file."
 
-  NODE_ENV=production npm ci
+  # Ensure ownership is assigned to 'bhima' before running npm and finishing setup
+  chown -R bhima:bhima "$RELEASE_DIR" || true
+  # Also ensure the symlink home exists and is owned
+  mkdir -p "$BHIMA_INSTALL_DIR/bhima"
+  chown -R bhima:bhima "$BHIMA_INSTALL_DIR/bhima" || true
 
+  echo "Installing npm dependencies as user 'bhima'..."
+  # Run npm ci as the bhima user (use runuser which is available on Debian/Ubuntu)
+  runuser -u bhima -- bash -lc 'cd "$HOME" || cd /opt/bhima/bhima; NODE_ENV=production npm ci --no-audit --production' || {
+    echo "npm install failed as bhima user"
+    exit 1
+  }
   echo "✓ installing npm dependencies."
 
   echo "Setting bhima to automatically startup..."
@@ -257,7 +281,17 @@ install_bhima() {
 
   sed -i "s#BHIMA_INSTALL_DIR#$BHIMA_INSTALL_DIR#g" /etc/systemd/system/bhima.service
 
-  # now we need to set up the BHIMA database
+  # Create a systemd drop-in so the service runs as 'bhima'
+  mkdir -p /etc/systemd/system/bhima.service.d
+  cat >/etc/systemd/system/bhima.service.d/override.conf <<EOF
+[Service]
+User=bhima
+Group=bhima
+# ensure the working directory is the symlinked install dir
+WorkingDirectory=$BHIMA_INSTALL_DIR/bhima
+EOF
+
+  # reload and start the service as bhima
   systemctl daemon-reload
   systemctl start bhima
   systemctl enable bhima
