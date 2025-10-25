@@ -34,7 +34,7 @@ function install_dependencies() {
   # Conditionally install software-properties-common for specific Debian versions
   local os_codename
   os_codename=$(lsb_release -cs)
-  if [[ "$os_codename" == "bookworm" || "$os_codename" == "trixie" ]]; then
+  if [[ "$os_codename" == "bookworm" ]]; then
     sudo apt-get -qq install -y software-properties-common >/dev/null
   fi
 
