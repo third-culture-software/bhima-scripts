@@ -257,6 +257,7 @@ install_bhima() {
 
     echo "PORT=$BHIMA_PORT" &
     echo "SESS_SECRET=$(openssl rand -hex 65)" &
+    echo "" &
   } >>.env
 
   # update the main .env file
@@ -282,17 +283,8 @@ install_bhima() {
   wget -O /etc/systemd/system/bhima.service \
     https://raw.githubusercontent.com/Third-Culture-Software/bhima-scripts/refs/heads/main/install/systemd/bhima.service
 
+  # ensure that the correct directory is set
   sed -i "s#BHIMA_INSTALL_DIR#$BHIMA_INSTALL_DIR\/bhima#g" /etc/systemd/system/bhima.service
-
-  # Create a systemd drop-in so the service runs as 'bhima'
-  mkdir -p /etc/systemd/system/bhima.service.d
-  cat >/etc/systemd/system/bhima.service.d/override.conf <<EOF
-[Service]
-User=bhima
-Group=bhima
-# ensure the working directory is the symlinked install dir
-WorkingDirectory=$BHIMA_INSTALL_DIR/bhima
-EOF
 
   # reload and start the service as bhima
   systemctl daemon-reload
