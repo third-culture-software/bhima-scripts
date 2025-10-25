@@ -28,14 +28,14 @@ function install_dependencies() {
   echo "Updating BHIMA OS dependencies..."
 
   # Refresh the package lists, and download the OS libraries
-  sudo apt-get -qq update >/dev/null && sudo apt-get -qq upgrade -y >/dev/null
-  sudo apt-get -qq install -y wget lsb-release ca-certificates curl gnupg apt-transport-https tar screen >/dev/null
+  apt-get -qq update && apt-get -qq upgrade -y 
+  apt-get -qq install -y wget lsb-release ca-certificates curl gnupg apt-transport-https tar screen 
 
   # Conditionally install software-properties-common for specific Debian versions
   local os_codename
   os_codename=$(lsb_release -cs)
   if [[ "$os_codename" == "bookworm" ]]; then
-    sudo apt-get -qq install -y software-properties-common >/dev/null
+    apt-get -qq install -y software-properties-common 
   fi
 
   echo "✓ dependencies updated"
@@ -49,8 +49,8 @@ function install_dependencies() {
 
   # Get the LTS NodeJS from NodeSource
   echo "Installing NodeJS LTS..."
-  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash - >/dev/null
-  sudo apt-get -qq install -y nodejs >/dev/null
+  curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+  apt-get -qq install -y nodejs 
   echo "✓ NodeJS installed."
   
   echo "Installing redis ..."
@@ -60,11 +60,11 @@ function install_dependencies() {
     rm /usr/share/keyrings/redis-archive-keyring.gpg
   fi
 
-  curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-  sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
-  echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list >/dev/null
-  sudo apt-get -qq update >/dev/null
-  sudo apt-get -qq install -y redis >/dev/null
+  curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+  chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list
+  apt-get -qq update
+  apt-get -qq install -y redis
 
   echo "✓ redis installed."
 }
@@ -81,21 +81,19 @@ function install_mysql() {
 
   # Add MySQL APT repository (non-interactive)
   wget https://dev.mysql.com/get/mysql-apt-config_0.8.35-1_all.deb
-  sudo DEBIAN_FRONTEND=noninteractive \
-    dpkg -i mysql-apt-config_0.8.35-1_all.deb >/dev/null <<EOF
-1
-EOF
+  DEBIAN_FRONTEND=noninteractive \
+    dpkg -i mysql-apt-config_0.8.35-1_all.deb 
 
   echo "✓ mysql repository configured."
 
   # Update package info
-  apt-get -qq update >/dev/null
+  apt-get -qq update 
 
   # Preseed MySQL root password and install MySQL Server non-interactively
   debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password $MYSQL_PASSWORD"
   debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password $MYSQL_PASSWORD"
   debconf-set-selections <<< "mysql-apt-config mysql-apt-config/select-server select $RELEASE_REPO" 
-  DEBIAN_FRONTEND=noninteractive apt-get -qq install -y mysql-community-server >/dev/null
+  DEBIAN_FRONTEND=noninteractive apt-get -qq install -y mysql-community-server
 
   echo "✓ mysql installed."
   echo "Configuring mysql server..."
@@ -120,14 +118,14 @@ EOF
   echo "✓ mysql server configured."
 
   # clean up previous mysql files
-  rm mysql-apt-config_0.8.35-1_all.deb
+  rm mysql-apt-config_0.8.36-1_all.deb
 
   systemctl enable -q --now mysql
 }
 
 # Function to install and configure NGINX
 install_nginx() {
-  sudo apt-get install nginx -y >/dev/null
+  apt-get install nginx -y
   mkdir -p /etc/nginx/includes/
 
   echo "✓ nginx installed."
@@ -154,18 +152,18 @@ install_nginx() {
   fi
 
   echo "✓ nginx configured."
-  sudo systemctl enable nginx
-  sudo systemctl start nginx
+  systemctl enable nginx
+  systemctl start nginx
 }
 
 # Function to install and configure syncthing (optional)
 install_syncthing() {
   echo "Installing Syncthing..."
 
-  sudo mkdir -p /etc/apt/keyrings
-  sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
-  echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | sudo tee /etc/apt/sources.list.d/syncthing.list >/dev/null
-  sudo apt-get -qq update >/dev/null && sudo apt-get -qq  install -y syncthing >/dev/null
+  mkdir -p /etc/apt/keyrings
+  curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | tee /etc/apt/sources.list.d/syncthing.list
+  apt-get -qq update && apt-get -qq  install -y syncthing
 
   echo "✓ syncthing installed."
 
@@ -268,7 +266,7 @@ install_tailscale() {
 
   echo "Installing Tailscale!"
   curl -fsSL https://tailscale.com/install.sh | sh
-  sudo tailscale up --auth-key="$TS_AUTH_KEY"
+  tailscale up --auth-key="$TS_AUTH_KEY"
   echo "Tailscale installed."
 }
 
@@ -276,7 +274,7 @@ install_tailscale() {
 harden_server() {
   echo "Hardening server security..."
 
-  sudo apt-get install -y unattended-upgrade fail2ban >/dev/null
+  apt-get install -y unattended-upgrade fail2ban
 
   # Configure unattended-upgrades
   cat >/etc/apt/apt.conf.d/20auto-upgrades <<EOF
