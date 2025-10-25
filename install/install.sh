@@ -9,6 +9,7 @@ BHIMA_HOST="bhima"   # e.g. vanga.thirdculturesoftware.com
 BHIMA_PORT=8080 # e.g.8080
 
 MYSQL_PASSWORD="$(openssl rand -hex 26)"
+SESS_SECRET="$(openssl rand -hex 26)"
 
 TS_AUTH_KEY=""
 
@@ -246,6 +247,8 @@ install_bhima() {
   sed -i '/DB_USER/d' .env
   sed -i '/PORT/d' .env
   sed -i '/SESS_SECRET/d' .env
+    sed -i '/REDIS_HOST/d' .env
+
 
   # write to .env file
   {
@@ -254,10 +257,11 @@ install_bhima() {
     echo "DB_USER=root" &
     echo "DB_HOST=127.0.0.1" &
     echo "REDIS_HOST=127.0.0.1" &
+    echo "SESS_SECRET=$SESS_SECRET" &
+
 
     echo "NODE_ENV=production" &
     echo "PORT=$BHIMA_PORT" &
-    echo "SESS_SECRET=$(openssl rand -hex 25)" &
 
     echo "" &
   } >>.env
