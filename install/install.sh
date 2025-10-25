@@ -80,7 +80,7 @@ function install_mysql() {
   fi
 
   # Add MySQL APT repository (non-interactive)
-  wget https://dev.mysql.com/get/mysql-apt-config_0.8.34-1_all.deb
+  wget https://dev.mysql.com/get/mysql-apt-config_0.8.35-1_all.deb
   sudo DEBIAN_FRONTEND=noninteractive \
     dpkg -i mysql-apt-config_0.8.35-1_all.deb >/dev/null <<EOF
 1
@@ -120,7 +120,7 @@ EOF
   echo "✓ mysql server configured."
 
   # clean up previous mysql files
-  rm mysql-apt-config_0.8.34-1_all.deb
+  rm mysql-apt-config_0.8.35-1_all.deb
 
   systemctl enable -q --now mysql
 }
