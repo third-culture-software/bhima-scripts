@@ -71,7 +71,7 @@ function install_dependencies() {
 
 # Function to install and configure MySQL
 function install_mysql() {
-  local RELEASE_REPO="mysql-8.4"
+  local RELEASE_REPO="mysql-8.4-lts"
   # local RELEASE_AUTH="caching_sha2_password" 
 
   echo "Configuring mysql APT repository... (using $RELEASE_REPO)"
