@@ -5,7 +5,7 @@ set -e # Exit immediately if a command exits with a non-zero status
 
 # Global Variables
 BHIMA_INSTALL_DIR="/opt/bhima"
-BHIMA_VERSION="1.36.0"
+BHIMA_VERSION="1.37.1"
 BHIMA_HOST=""   # e.g. vanga.thirdculturesoftware.com
 BHIMA_PORT=8080 # e.g.8080
 
