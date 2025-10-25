@@ -259,7 +259,6 @@ install_bhima() {
     echo "REDIS_HOST=127.0.0.1" &
     echo "SESS_SECRET=$SESS_SECRET" &
 
-
     echo "NODE_ENV=production" &
     echo "PORT=$BHIMA_PORT" &
 
@@ -297,7 +296,13 @@ install_bhima() {
   systemctl start bhima
   systemctl enable bhima
 
+
   echo "✓ BHIMA installed and configured."
+
+  systemctl restart nginx
+
+  echo "✓ restarted nginx to deploy bhima."
+
 }
 
 # Function to install and configure Tailscale
