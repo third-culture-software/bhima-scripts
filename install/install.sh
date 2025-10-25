@@ -259,6 +259,9 @@ install_bhima() {
     echo "SESS_SECRET=$(openssl rand -hex 65)" &
   } >>.env
 
+  # update the main .env file
+  cp .env ./bin/.env
+
   echo "✓ updated .env file."
 
   # Ensure ownership is assigned to 'bhima' before running npm and finishing setup
@@ -279,7 +282,7 @@ install_bhima() {
   wget -O /etc/systemd/system/bhima.service \
     https://raw.githubusercontent.com/Third-Culture-Software/bhima-scripts/refs/heads/main/install/systemd/bhima.service
 
-  sed -i "s#BHIMA_INSTALL_DIR#$BHIMA_INSTALL_DIR#g" /etc/systemd/system/bhima.service
+  sed -i "s#BHIMA_INSTALL_DIR#$BHIMA_INSTALL_DIR\/bhima#g" /etc/systemd/system/bhima.service
 
   # Create a systemd drop-in so the service runs as 'bhima'
   mkdir -p /etc/systemd/system/bhima.service.d
