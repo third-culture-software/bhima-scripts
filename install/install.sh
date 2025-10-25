@@ -282,7 +282,7 @@ install_tailscale() {
 harden_server() {
   echo "Hardening server security..."
 
-  apt-get install -y unattended-upgrade fail2ban
+  apt-get install -y unattended-upgrades fail2ban
 
   # Configure unattended-upgrades
   cat >/etc/apt/apt.conf.d/20auto-upgrades <<EOF
