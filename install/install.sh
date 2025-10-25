@@ -28,8 +28,15 @@ function install_dependencies() {
   echo "Updating BHIMA OS dependencies..."
 
   # Refresh the package lists, and download the OS libraries
-  sudo apt-get -qq update && sudo apt-get -qq upgrade -y
-  sudo apt-get -qq install -y wget lsb-release ca-certificates curl gnupg software-properties-common apt-transport-https tar screen
+  sudo apt-get -qq update >/dev/null && sudo apt-get -qq upgrade -y >/dev/null
+  sudo apt-get -qq install -y wget lsb-release ca-certificates curl gnupg apt-transport-https tar screen >/dev/null
+
+  # Conditionally install software-properties-common for specific Debian versions
+  local os_codename
+  os_codename=$(lsb_release -cs)
+  if [[ "$os_codename" == "bookworm" || "$os_codename" == "trixie" ]]; then
+    sudo apt-get -qq install -y software-properties-common >/dev/null
+  fi
 
   echo "✓ dependencies updated"
 
@@ -42,8 +49,8 @@ function install_dependencies() {
 
   # Get the LTS NodeJS from NodeSource
   echo "Installing NodeJS LTS..."
-  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -
-  sudo apt-get -qq install -y nodejs
+  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash - >/dev/null
+  sudo apt-get -qq install -y nodejs >/dev/null
   echo "✓ NodeJS installed."
   
   echo "Installing redis ..."
@@ -55,9 +62,9 @@ function install_dependencies() {
 
   curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
   sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
-  echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
-  sudo apt-get -qq update
-  sudo apt-get -qq install -y redis
+  echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list >/dev/null
+  sudo apt-get -qq update >/dev/null
+  sudo apt-get -qq install -y redis >/dev/null
 
   echo "✓ redis installed."
 }
@@ -75,20 +82,20 @@ function install_mysql() {
   # Add MySQL APT repository (non-interactive)
   wget https://dev.mysql.com/get/mysql-apt-config_0.8.34-1_all.deb
   sudo DEBIAN_FRONTEND=noninteractive \
-    dpkg -i mysql-apt-config_0.8.34-1_all.deb <<EOF
+    dpkg -i mysql-apt-config_0.8.35-1_all.deb >/dev/null <<EOF
 1
 EOF
 
   echo "✓ mysql repository configured."
 
   # Update package info
-  apt-get -qq update
+  apt-get -qq update >/dev/null
 
   # Preseed MySQL root password and install MySQL Server non-interactively
   debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password $MYSQL_PASSWORD"
   debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password $MYSQL_PASSWORD"
   debconf-set-selections <<< "mysql-apt-config mysql-apt-config/select-server select $RELEASE_REPO" 
-  DEBIAN_FRONTEND=noninteractive apt-get -qq install -y mysql-community-server
+  DEBIAN_FRONTEND=noninteractive apt-get -qq install -y mysql-community-server >/dev/null
 
   echo "✓ mysql installed."
   echo "Configuring mysql server..."
@@ -120,7 +127,7 @@ EOF
 
 # Function to install and configure NGINX
 install_nginx() {
-  sudo apt-get install nginx -y
+  sudo apt-get install nginx -y >/dev/null
   mkdir -p /etc/nginx/includes/
 
   echo "✓ nginx installed."
@@ -157,8 +164,8 @@ install_syncthing() {
 
   sudo mkdir -p /etc/apt/keyrings
   sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
-  echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | sudo tee /etc/apt/sources.list.d/syncthing.list
-  sudo apt-get -qq update && sudo apt-get -qq  install -y syncthing
+  echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | sudo tee /etc/apt/sources.list.d/syncthing.list >/dev/null
+  sudo apt-get -qq update >/dev/null && sudo apt-get -qq  install -y syncthing >/dev/null
 
   echo "✓ syncthing installed."
 
@@ -269,7 +276,7 @@ install_tailscale() {
 harden_server() {
   echo "Hardening server security..."
 
-  sudo apt-get install -y unattended-upgrade fail2ban
+  sudo apt-get install -y unattended-upgrade fail2ban >/dev/null
 
   # Configure unattended-upgrades
   cat >/etc/apt/apt.conf.d/20auto-upgrades <<EOF
