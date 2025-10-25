@@ -275,7 +275,7 @@ install_bhima() {
 
   echo "Installing npm dependencies as user 'bhima'..."
   # Run npm ci as the bhima user (use runuser which is available on Debian/Ubuntu)
-  runuser -u bhima -- bash -lc 'cd "$HOME" || cd /opt/bhima/bhima; NODE_ENV=production npm ci --no-audit --production' || {
+  runuser -u bhima -- bash -lc 'cd "$HOME" || cd /opt/bhima/bhima; NODE_ENV=production npm ci --no-audit --omit=dev' || {
     echo "npm install failed as bhima user"
     exit 1
   }
