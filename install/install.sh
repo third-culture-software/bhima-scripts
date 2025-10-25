@@ -5,7 +5,6 @@ set -e # Exit immediately if a command exits with a non-zero status
 
 # Global Variables
 BHIMA_INSTALL_DIR="/opt/bhima"
-BHIMA_VERSION="1.37.1"
 BHIMA_HOST=""   # e.g. vanga.thirdculturesoftware.com
 BHIMA_PORT=8080 # e.g.8080
 
@@ -20,7 +19,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Print welcome message
-echo "Welcome! This script will help install the BHIMA software version $BHIMA_VERSION."
+echo "Welcome! This script will help install the BHIMA software."
 echo "=============================================================================="
 
 # Function to install dependencies
@@ -207,8 +206,8 @@ install_bhima() {
   echo "✓ download and extraction complete."
 
   local RELEASE_DIR
-  RELEASE_DIR="$BHIMA_INSTALL_DIR/bhima-$BHIMA_VERSION"
-  echo "BHIMA installed to $RELEASE_DIR."
+  RELEASE_DIR="$BHIMA_INSTALL_DIR/bhima-$LATEST_RELEASE"
+  echo "BHIMA version $LATEST_RELEASE installed to $RELEASE_DIR."
 
   # make a symbolic link to the bin directory
   ln -s "$RELEASE_DIR/" "$BHIMA_INSTALL_DIR/bhima"
@@ -217,7 +216,7 @@ install_bhima() {
   mkdir -p "$BHIMA_INSTALL_DIR"
   cd "$BHIMA_INSTALL_DIR/bhima"
 
-  cp ./bin/* .
+  find ./bin -maxdepth 1 -type f -exec cp {} . \;
 
   sed -i '/DB_NAME/d' .env
   sed -i '/DB_PASS/d' .env
@@ -247,7 +246,7 @@ install_bhima() {
   wget -O /etc/systemd/system/bhima.service \
     https://raw.githubusercontent.com/Third-Culture-Software/bhima-scripts/refs/heads/main/install/systemd/bhima.service
 
-  sed -i "s/BHIMA_INSTALL_DIR/$BHIMA_INSTALL_DIR/g" /etc/systemd/system/bhima.service
+  sed -i "s#BHIMA_INSTALL_DIR#$BHIMA_INSTALL_DIR#g" /etc/systemd/system/bhima.service
 
   # now we need to set up the BHIMA database
   systemctl daemon-reload
