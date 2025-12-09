@@ -36,7 +36,7 @@ error_exit() {
 # Function to list available backups
 list_backups() {
   echo "Available backups:"
-  find "$BACKUP_DIRECTORY" -name "*$DATABASE*.sql.zst" | sort -r | nl
+  find "$BACKUP_DIRECTORY" -name "*.sql.zst" | sort -r | nl
 }
 
 # Restore function
@@ -53,7 +53,7 @@ perform_restore() {
   local BACKUP_FILE=""
 
   # try to find the backup fiel.
-  BACKUP_FILE=$(find "$BACKUP_DIRECTORY" -name "*$DATABASE*.sql.zst" -printf '%T@ %p\n' | sort -nr | awk '{print $2}' | head -n 1)
+  BACKUP_FILE=$(find "$BACKUP_DIRECTORY" -name "*.sql.zst" -printf '%T@ %p\n' | sort -nr | awk '{print $2}' | head -n 1)
 
   # Validate backup file exists
   if [ ! -f "$BACKUP_FILE" ]; then
@@ -94,7 +94,7 @@ perform_restore() {
 
   # Remove temporary file
   rm "$TEMP_SQL_FILE"
-  
+
   # end time
   local end_time=$(date +%s)
 
@@ -109,7 +109,7 @@ perform_restore() {
   MAX_CASH_DATE=$(mysql -D "$DATABASE" -N -e "SELECT MAX(date) FROM cash;")
   MAX_INVOICE_DATE=$(mysql -D "$DATABASE" -N -e "SELECT MAX(date) FROM invoice;")
   MAX_VOUCHER_DATE=$(mysql -D "$DATABASE" -N -e "SELECT MAX(date) FROM voucher;")
-  
+
   # Update the dashboard to denote when the database was last build
   SIZE=$(mysql -sN -e "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) FROM information_schema.tables WHERE table_schema = '$DATABASE';")
   MSG="Database last built at $(date +"%Y-%m-%d %H:%M:%S %Z").
