@@ -102,6 +102,7 @@ function install_mysql() {
   systemctl enable mysql
 
   # Add sql-mode to MySQL config so it persists across reboots
+  mkdir -p /etc/mysql/mysql.conf.d
   cat >/etc/mysql/mysql.conf.d/bhima.cnf <<EOF
 [mysqld]
 sql-mode='STRICT_ALL_TABLES,NO_UNSIGNED_SUBTRACTION'
@@ -126,8 +127,6 @@ EOF
 
   # clean up previous mysql files
   rm mysql-apt-config_0.8.35-1_all.deb
-
-  systemctl enable -q --now mysql
 }
 
 # Function to install and configure NGINX
