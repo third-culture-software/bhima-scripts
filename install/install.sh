@@ -5,7 +5,8 @@ set -e # Exit immediately if a command exits with a non-zero status
 
 # Global Variables
 BHIMA_INSTALL_DIR="/opt/bhima"
-BHIMA_HOST="bhima"   # e.g. vanga.thirdculturesoftware.com
+BHIMA_VERSION="1.38.0"
+BHIMA_HOST=""   # e.g. vanga.thirdculturesoftware.com
 BHIMA_PORT=8080 # e.g.8080
 
 MYSQL_PASSWORD="$(openssl rand -hex 26)"
@@ -28,14 +29,14 @@ function install_dependencies() {
   echo "Updating BHIMA OS dependencies..."
 
   # Refresh the package lists, and download the OS libraries
-  apt-get -qq update && apt-get -qq upgrade -y 
-  apt-get -qq install -y wget lsb-release ca-certificates curl gnupg apt-transport-https tar screen 
+  sudo apt-get -qq update && apt-get -qq upgrade -y
+  suod apt-get -qq install -y wget lsb-release ca-certificates curl gnupg apt-transport-https tar screen
 
   # Conditionally install software-properties-common for specific Debian versions
   local os_codename
   os_codename=$(lsb_release -cs)
   if [[ "$os_codename" == "bookworm" ]]; then
-    apt-get -qq install -y software-properties-common 
+    sudo apt-get -qq install -y software-properties-common
   fi
 
   echo "✓ dependencies updated"
@@ -50,9 +51,9 @@ function install_dependencies() {
   # Get the LTS NodeJS from NodeSource
   echo "Installing NodeJS LTS..."
   curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-  apt-get -qq install -y nodejs 
+  apt-get -qq install -y nodejs
   echo "✓ NodeJS installed."
-  
+
   echo "Installing redis ..."
 
   # Install the redis.io APT repository
@@ -66,40 +67,55 @@ function install_dependencies() {
   apt-get -qq update
   apt-get -qq install -y redis
 
+  sudo systemctl enable -q --now redis-server
+
   echo "✓ redis installed."
 }
 
 # Function to install and configure MySQL
 function install_mysql() {
   local RELEASE_REPO="mysql-8.4-lts"
-  # local RELEASE_AUTH="caching_sha2_password" 
+  local RELEASE_AUTH="caching_sha2_password"
 
   echo "Configuring mysql APT repository... (using $RELEASE_REPO)"
   if [ -f /usr/share/keyrings/mysql.gpg ]; then
     rm /usr/share/keyrings/mysql.gpg
   fi
 
-  # Add MySQL APT repository (non-interactive)
-  wget https://dev.mysql.com/get/mysql-apt-config_0.8.35-1_all.deb
-  DEBIAN_FRONTEND=noninteractive \
-    dpkg -i mysql-apt-config_0.8.35-1_all.deb 
+  curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2025 | gpg --dearmor -o /usr/share/keyrings/mysql.gpg
+
+  if [ "$(lsb_release -si)" = "Debian" ]; then
+    cat <<EOF >/etc/apt/sources.list.d/mysql.sources
+Types: deb
+URIs: http://repo.mysql.com/apt/debian
+Suites: $(lsb_release -sc)
+Components: ${RELEASE_REPO}
+Signed-By: /usr/share/keyrings/mysql.gpg
+EOF
+  else
+    cat <<EOF >/etc/apt/sources.list.d/mysql.sources
+Types: deb
+URIs: http://repo.mysql.com/apt/ubuntu
+Suites: $(lsb_release -sc)
+Components: ${RELEASE_REPO}
+Signed-By: /usr/share/keyrings/mysql.gpg
+EOF
+  fi
 
   echo "✓ mysql repository configured."
 
   # Update package info
-  apt-get -qq update 
+  apt-get -qq update
 
-  # Preseed MySQL root password and install MySQL Server non-interactively
-  debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password $MYSQL_PASSWORD"
-  debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password $MYSQL_PASSWORD"
-  debconf-set-selections <<< "mysql-apt-config mysql-apt-config/select-server select $RELEASE_REPO" 
-  DEBIAN_FRONTEND=noninteractive apt-get -qq install -y mysql-community-server
+  sudo apt-get update
+  export DEBIAN_FRONTEND=noninteractive
+  sudo apt-get install -y mysql-community-client mysql-community-server
 
   echo "✓ mysql installed."
   echo "Configuring mysql server..."
-  
+
   # Start and enable MySQL
-  systemctl enable mysql
+  sudo systemctl enable -q --now mysql
 
   # Add sql-mode to MySQL config so it persists across reboots
   mkdir -p /etc/mysql/mysql.conf.d
@@ -109,7 +125,7 @@ sql-mode='STRICT_ALL_TABLES,NO_UNSIGNED_SUBTRACTION'
 EOF
 
   systemctl restart mysql
-  
+
   # create the ~/my.cnf file with the mysql credentials
   cat <<EOF >"/root/.my.cnf"
 [mysql]
@@ -169,7 +185,7 @@ install_syncthing() {
   mkdir -p /etc/apt/keyrings
   curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg
   echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | tee /etc/apt/sources.list.d/syncthing.list
-  apt-get -qq update && apt-get -qq  install -y syncthing
+  apt-get -qq update && apt-get -qq install -y syncthing
 
   echo "✓ syncthing installed."
 
@@ -253,8 +269,7 @@ install_bhima() {
   sed -i '/DB_USER/d' .env
   sed -i '/PORT/d' .env
   sed -i '/SESS_SECRET/d' .env
-    sed -i '/REDIS_HOST/d' .env
-
+  sed -i '/REDIS_HOST/d' .env
 
   # write to .env file
   {
@@ -301,7 +316,6 @@ install_bhima() {
   systemctl daemon-reload
   systemctl start bhima
   systemctl enable bhima
-
 
   echo "✓ BHIMA installed and configured."
 
