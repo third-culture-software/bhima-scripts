@@ -122,6 +122,11 @@ EOF
   cat >/etc/mysql/mysql.conf.d/bhima.cnf <<EOF
 [mysqld]
 sql-mode='STRICT_ALL_TABLES,NO_UNSIGNED_SUBTRACTION'
+
+innodb_buffer_pool_size = 3G
+innodb_log_file_size = 2G
+innodb_buffer_pool_instances = 4
+innodb_stats_on_metadata = OFF
 EOF
 
   systemctl restart mysql
